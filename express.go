@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 )
 
-
+// ExpressPayload is the payload for Daraja LNM endpoint
 type ExpressPayload struct {
 	BusinessShortCode string 
 	Password          string
@@ -26,6 +26,7 @@ type ExpressPayload struct {
 	TransactionDesc   string
 }
 
+// STKPushRes is the response sent by LNM request
 type STKPushRes struct{
 	MerchantRequestID string
 	CheckoutRequestID string
@@ -33,13 +34,15 @@ type STKPushRes struct{
 	ResponseDescription string
 	CustomerMessage string
 }
+
+// STKCallBackResponse is the response to the LNM callback url
 type STKCallBackResponse  struct {
 	Body struct{
 		StkCallback STKCallBack `json:"stkCallback"`
 	}
 }
 
-
+// STKCallBack is STKCallBackResponse body
 type STKCallBack struct{
 	MerchantRequestID string
 	CheckoutRequestID string
@@ -47,7 +50,7 @@ type STKCallBack struct{
 	ResultDesc string
 	CallbackMetadata *STKCallBackItems;
 }
-
+// STKCallBackItems is the array of STKCallBackResponse metadata
 type STKCallBackItems struct{
 	Item []struct{
 		Name string
@@ -55,7 +58,7 @@ type STKCallBackItems struct{
 	}
 }
 
-
+// ParsedSTKCallBackRes is the parsed form of STKCallBackResponse 
 type ParsedSTKCallBackRes struct{
 	MerchantRequestID string
 	CheckoutRequestID string
@@ -68,6 +71,7 @@ type ParsedSTKCallBackRes struct{
 	}
 }
 
+// ExpressServiceInterface interface
 type ExpressServiceInterface interface{
 	STKPush(phonenumber string, amount int, 
 		accountReference string, transactionDesc string,
@@ -75,23 +79,34 @@ type ExpressServiceInterface interface{
 	ParseSTKCallbackRes(stkCallBackRes io.Reader) (ParsedSTKCallBackRes, error)
 }
 
+// ExpressService express api client
 type ExpressService struct{
-	config MpesaConfig
+	config *Config
 }
 
+// STKPush sends stk push request to daraja
 func (s *ExpressService) STKPush(phonenumber string, amount int, 
 	accountReference string, transactionDesc string,
-	callbackURL string) (STKPushRes, error){
+	callbackURL string) (stkPushRes *STKPushRes, err error){
 
 		t := time.Now();
 		layout := "20060102150405";
 		timestamp := t.Format(layout);
-		expressShortCode := s.config.GetExpressShortCode();
-		expressPassKey := s.config.GetExpressPassKey();
+		expressShortCode, err := s.config.GetShortCode();
+		if err != nil {
+			return;
+		}
+		expressPassKey, err := s.config.GetExpressPassKey();
+		if err != nil {
+			return;
+		}
 
 		password := base64.StdEncoding.EncodeToString([]byte(expressShortCode+expressPassKey+timestamp));
 		
-		phoneNumber := FormatPhoneNumber(phonenumber, "E164");
+		phoneNumber, err := FormatPhoneNumber(phonenumber, "E164");
+		if err != nil {
+			return;
+		}
 		expressPayload := &ExpressPayload{
 			BusinessShortCode:expressShortCode,
 			Password:password,
@@ -106,42 +121,61 @@ func (s *ExpressService) STKPush(phonenumber string, amount int,
 			TransactionDesc:transactionDesc,
 		};
 		jsonPayload, err := json.Marshal(expressPayload);
-		FatalError(err);
+		if err != nil {
+			return;
+		}
 		
 		authToken,err := NewAuthToken(s.config);
-		FatalError(err);
+		if err != nil {
+			return;
+		}
 
 		client := http.Client{
 			Timeout:time.Second*10,
 		};
 
 		apiEndpoint := "/mpesa/stkpush/v1/processrequest"
-		url := s.config.GetBaseUrl() + apiEndpoint;
+		url, err := s.config.GetBaseURL();
+		if err != nil {
+			return;
+		}
+		url = url +apiEndpoint;
 		bytesReader := bytes.NewReader(jsonPayload);
 		req, err := http.NewRequest(http.MethodPost,url,bytesReader);
+		if err != nil {
+			return;
+		}
 		req.Header.Add("Authorization","Bearer "+authToken.AccessToken);
 		req.Header.Add("Content-Type","application/json");
-		FatalError(err);
+	
 		res, err := client.Do(req);
-		FatalError(err);
+		if err != nil {
+			return;
+		}
 		expressResponse := &STKPushRes{};
 		resBody,err := ioutil.ReadAll(res.Body);
-		FatalError(err);
+		if err != nil {
+			return;
+		}
 		err = json.Unmarshal(resBody, expressResponse);
-		FatalError(err);
-		return *expressResponse, nil;
+		return;
 	}
 
-func (s *ExpressService)ParseSTKCallbackRes(stkCallBackRes io.Reader) (ParsedSTKCallBackRes, error){
+// ParseSTKCallbackRes parses the response from the stk push callback payload
+func (s *ExpressService)ParseSTKCallbackRes(stkCallBackRes io.Reader) (parsedStkRes *ParsedSTKCallBackRes, 
+	err error){
 	data,err := ioutil.ReadAll(stkCallBackRes);
-	FatalError(err);
+	if err != nil {
+		return;
+	}
 
 	stkCallBack := STKCallBackResponse{};
 
 	err = json.Unmarshal(data, &stkCallBack);
-	FatalError(err);
-
-	parsedStkCallBack := ParsedSTKCallBackRes{
+	if err != nil {
+		return;
+	}
+	parsedStkRes = &ParsedSTKCallBackRes{
 		MerchantRequestID:stkCallBack.Body.StkCallback.MerchantRequestID,
 		CheckoutRequestID:stkCallBack.Body.StkCallback.CheckoutRequestID,
 		ResultCode:stkCallBack.Body.StkCallback.ResultCode,
@@ -154,29 +188,29 @@ func (s *ExpressService)ParseSTKCallbackRes(stkCallBackRes io.Reader) (ParsedSTK
 			switch(item.Name){
 				case "Amount":
 					amount,_ := item.Value.(float64)
-					parsedStkCallBack.Meta.Amount = int(amount);
+					parsedStkRes.Meta.Amount = int(amount);
 					break;
 				case "MpesaReceiptNumber":
 					receipt,_ := item.Value.(string);
-					parsedStkCallBack.Meta.MpesaReceiptNumber = receipt;
+					parsedStkRes.Meta.MpesaReceiptNumber = receipt;
 					break;
 				case "PhoneNumber":
 					phoneI,_ := item.Value.(float64);
 					phone := strconv.Itoa(int(phoneI));
-					parsedStkCallBack.Meta.PhoneNumber = phone;
+					parsedStkRes.Meta.PhoneNumber = phone;
 					break;
 				default:
 					break;
 			}
 		}
 	}
-
-	return parsedStkCallBack, nil;
+	return;
 }
 
-func NewExpressService(mc MpesaConfig)(ExpressService, error){
-	expressService := ExpressService{
+// NewExpressService returns ExpressService
+func NewExpressService(mc *Config)( expressService *ExpressService, err error){
+	expressService = &ExpressService{
 		config:mc,
 	};
-	return expressService, nil;
+	return;
 }

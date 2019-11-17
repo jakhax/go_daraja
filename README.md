@@ -36,11 +36,11 @@ import (
 )
 
 func main(){
-	config := mpesa.MpesaConfig{
+	config := &mpesa.Config{
 		MpesaEnvironment:"environment e.g sanbox/production",
 		MpesaConsumerKey:"Your Consumer Key",
 		MpesaConsumerSecret:"Your Consumer Secret",
-		MpesaExpressShortCode:"Your Express Short code",
+		MpesaShortCode:"Your Express Short code",
 		MpesaExpressPassKey:"Your Express Pass Key",
 	}
 	expressService,err :=  mpesa.NewExpressService(config);

@@ -1,84 +1,92 @@
-package mpesa;
+package mpesa
 
-import (
-	"log"
-)
-
-type MpesaConfigInterface interface{
-	GetConsumerkey() string
-	GetConsumerSecret() string
-	GetEnvironment() string
-	GetShortCode() string
-	GetExpressShortCode() string 
-	GetExpressPassKey() string
-	GetBaseUrl() string
+// ConfigInterface : mpesa settings interface
+type ConfigInterface interface {
+	GetConsumerkey() (c string, err error)
+	GetConsumerSecret() (c string, err error)
+	GetEnvironment() (c string, err error)
+	GetShortCode() (c string, err error)
+	// GetExpressShortCode() (c string, err error)
+	GetExpressPassKey() (c string, err error)
+	GetBaseURL() (c string, err error)
 }
 
-func VariableNotSetFatal(s string){
-	log.Fatalf("%s not set\n",s);
-}
-
-
-type MpesaConfig struct {
-	MpesaConsumerKey string
+// Config : mpesa settings
+type Config struct {
+	MpesaConsumerKey    string
 	MpesaConsumerSecret string
-	MpesaEnvironment string
-	MpesaShortCode string
-	MpesaExpressShortCode string
+	MpesaEnvironment    string
+	MpesaShortCode      string
+	// MpesaExpressShortCode string
 	MpesaExpressPassKey string
 }
 
-
-func (mc *MpesaConfig) GetConsumerkey()string{
-	if(mc.MpesaConsumerKey == ""){
-		VariableNotSetFatal("Mpesa Consumer Key");
+// GetConsumerkey returns the consumer key
+func (mc *Config) GetConsumerkey() (c string, err error) {
+	c = mc.MpesaConsumerKey
+	if mc.MpesaConsumerKey == "" {
+		err = &ConfigNotSetError{Config: "Mpesa Consumer Key"}
 	}
-	return mc.MpesaConsumerKey;
+	return
 }
 
-func (mc *MpesaConfig) GetConsumerSecret()string{
-	if(mc.MpesaConsumerSecret == ""){
-		VariableNotSetFatal("Mpesa Consumer Secret");
+// GetConsumerSecret returns the Consumer Secret
+func (mc *Config) GetConsumerSecret() (c string, err error) {
+	c = mc.MpesaConsumerSecret
+	if mc.MpesaConsumerSecret == "" {
+		err = &ConfigNotSetError{Config: "Mpesa Consumer Secret"}
 	}
-	return mc.MpesaConsumerSecret;
+	return
+
 }
 
-func (mc *MpesaConfig) GetEnvironment()string{
-	if(mc.MpesaEnvironment == ""){
-		VariableNotSetFatal("MpesaEnvironment");
+// GetEnvironment returns enviroment, should be sandbox or production
+func (mc *Config) GetEnvironment() (c string, err error) {
+	c = mc.MpesaEnvironment
+	if mc.MpesaEnvironment == "" {
+		err = &ConfigNotSetError{Config: "Mpesa Envrironment Secret"}
 	}
-	return mc.MpesaEnvironment;
+	return
 }
 
-func (mc *MpesaConfig) GetShortCode()string{
-	if(mc.MpesaShortCode == ""){
-		VariableNotSetFatal("Mpesa ShortCode");
+// GetShortCode returns the short code (till no/ pay bill)
+func (mc *Config) GetShortCode() (c string, err error) {
+	c = mc.MpesaShortCode
+	if mc.MpesaShortCode == "" {
+		err = &ConfigNotSetError{Config: "Mpesa Short Code"}
 	}
-	return mc.MpesaShortCode;
+	return
 }
 
-func (mc *MpesaConfig) GetExpressShortCode()string{
-	if(mc.MpesaExpressShortCode == ""){
-		VariableNotSetFatal("Mpesa Express ShortCode");
+// func (mc *Config) GetExpressShortCode() (c string, err error){
+// 	c = mc.MpesaExpressShortCode;
+// 	if mc.MpesaExpressShortCode == ""{
+// 		err = &ConfigNotSetError{Config:"Mpesa Express Short Code Secret"};
+// 	}
+// 	return;
+// }
+
+// GetExpressPassKey returns the Express PassKey / LNM Passkey
+func (mc *Config) GetExpressPassKey() (c string, err error) {
+	c = mc.MpesaExpressPassKey
+	if mc.MpesaExpressPassKey == "" {
+		err = &ConfigNotSetError{Config: "Mpesa Express Pass Key"}
 	}
-	return mc.MpesaExpressShortCode;
+	return
 }
 
-func (mc *MpesaConfig) GetExpressPassKey()string{
-	if(mc.MpesaExpressPassKey == ""){
-		VariableNotSetFatal("Mpesa Express Pass Key");
+// GetBaseURL returns base  daraja Api url depending on environment
+func (mc *Config) GetBaseURL() (c string, err error) {
+	mpesaEnvironment, err := mc.GetEnvironment()
+	if err != nil {
+		return
 	}
-	return mc.MpesaExpressPassKey;
-}
-
-func (mc *MpesaConfig) GetBaseUrl()string{
-	mpesaEnvironment := mc.GetEnvironment();
-	if(mpesaEnvironment=="sandbox"){
-		return "https://sandbox.safaricom.co.ke";
-	}else if(mpesaEnvironment=="production"){
-		return "https://api.safaricom.co.ke"
-	}else{
-		log.Fatal("Mpesa Environment options are: sandbox or production");
+	if mpesaEnvironment == "sandbox" {
+		c = "https://sandbox.safaricom.co.ke"
+	} else if mpesaEnvironment == "production" {
+		c = "https://api.safaricom.co.ke"
+	} else {
+		err = &InvalidMpesaEnvironment{}
 	}
-	return "";
+	return
 }
