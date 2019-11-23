@@ -152,12 +152,12 @@ func (s *ExpressService) STKPush(phonenumber string, amount int,
 		if err != nil {
 			return;
 		}
-		expressResponse := &STKPushRes{};
+		stkPushRes = &STKPushRes{};
 		resBody,err := ioutil.ReadAll(res.Body);
 		if err != nil {
 			return;
 		}
-		err = json.Unmarshal(resBody, expressResponse);
+		err = json.Unmarshal(resBody, stkPushRes);
 		return;
 	}
 
