@@ -9,7 +9,7 @@
 - [x] Lipa Na Mpesa Api / Express.
 - [ ] C2B Api
 - [ ] B2B Api
-- [ ] B2B Api
+- [ ] B2C Api
 - [ ] Transaction Api
 - [ ] Reversal Api
 
