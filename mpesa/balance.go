@@ -3,9 +3,6 @@ package mpesa
 import (
 	"regexp"
 	"fmt"
-	"encoding/json"
-	"net/http"
-	"bytes"
 	
 )
 
@@ -116,24 +113,7 @@ func (s *Mpesa) BalanceQuery(balanceQuery *BalanceQuery)(apiRes *APIRes,err erro
 		QueueTimeOutURL:balanceQuery.TimeOutCallBackURL,
 		ResultURL:balanceQuery.ResultCallBackURL,
 	} 
-	jsonPayload,err := json.Marshal(payload)
-	if err != nil{
-		return
-	}
-	url ,err :=  s.GetBaseURL()
-	if err != nil{
-		return
-	}
-	url += "/mpesa/accountbalance/v1/query"
-	req , err := http.NewRequest(http.MethodPost,url,bytes.NewReader(jsonPayload))
-	if err != nil{
-		return
-	}
-	req.Header.Add("Content-Type","application/json")
-	res, err := s.MakeRequest(req)
-	if err != nil {
-		return
-	}
-	apiRes, err = s.GetAPIResponse(res)
+	endpoint := "/mpesa/accountbalance/v1/query"
+	apiRes, err = s.SendAPIRequest(endpoint,payload)
 	return
 }

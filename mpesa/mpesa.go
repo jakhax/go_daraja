@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"bytes"
 )
 
 type C2BApi interface {
@@ -53,6 +54,10 @@ const BusinessPayment string = "BusinessPayment"
 const PromotionPayment string = "PromotionPayment"
 //AccountBalance commandID
 const AccountBalance string = "AccountBalance"
+//TransactionStatusQuery commandID
+const TransactionStatusQuery string = "TransactionStatusQuery"
+//TransactionReversal commandID
+const TransactionReversal string = "TransactionReversal"
 
 //Mpesa service implements express, b2c, cb2, b2b, reverse, balance query & transaction query
 type Mpesa struct{
@@ -161,8 +166,27 @@ type APIRes struct {
 	ResponseDescription      string `json:"ResponseDescription"`
 }
 
-//GetAPIResponse returns api response
-func (s *Mpesa) GetAPIResponse(res *http.Response)(apiRes *APIRes, err error){
+
+//SendAPIRequest send api request
+func (s *Mpesa) SendAPIRequest(endpoint string,payload interface{}) (apiRes *APIRes, err error){
+	jsonPayload,err := json.Marshal(payload)
+	if err != nil{
+		return
+	}
+	url ,err :=  s.GetBaseURL()
+	if err != nil{
+		return
+	}
+	url += endpoint
+	req , err := http.NewRequest(http.MethodPost,url,bytes.NewReader(jsonPayload))
+	if err != nil{
+		return
+	}
+	req.Header.Add("Content-Type","application/json")
+	res, err := s.MakeRequest(req)
+	if err != nil {
+		return
+	}
 	rBody, err := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
 	if err != nil{
@@ -175,6 +199,7 @@ func (s *Mpesa) GetAPIResponse(res *http.Response)(apiRes *APIRes, err error){
 	apiRes = &APIRes{}
 	err = json.Unmarshal(rBody,apiRes)
 	return
+
 }
 
 //NewMpesa returns *Mpesa service

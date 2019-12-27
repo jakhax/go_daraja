@@ -3,16 +3,12 @@ package mpesa
 import (
 	"fmt"
 	"regexp"
-	"encoding/json"
-	"io/ioutil"
-	"bytes"
-	"net/http"
 	"strconv"
 )
 
 //B2CAPI service intercface
 type B2CAPI interface {
-	B2C(b2c *B2C) (b2cRes *B2CRes, err error)
+	B2C(b2c *B2C) (apiRes *APIRes, err error)
 }
 
 //B2C model 
@@ -119,16 +115,8 @@ type B2CPayload struct {
 }
 
 
-//B2CRes response payload
-type B2CRes struct {
-	ConversationID           string `json:"ConversationID"`
-	OriginatorConversationID string `json:"OriginatorConversationID"`
-	ResponseCode             string `json:"ResponseCode"`
-	ResponseDescription      string `json:"ResponseDescription"`
-}
-
 //B2C sends a b2c request to daraja
-func (s *Mpesa) B2C(b2c *B2C)(b2cRes *B2CRes, err error){
+func (s *Mpesa) B2C(b2c *B2C)(apiRes *APIRes, err error){
 	err = b2c.OK()
 	if err != nil{
 		return
@@ -149,32 +137,7 @@ func (s *Mpesa) B2C(b2c *B2C)(b2cRes *B2CRes, err error){
 		QueueTimeOutURL:b2c.TimeOutCallBackURL,
 		ResultURL:b2c.ResultCallBackURL,
 	}
-	jsonPayload,err:= json.Marshal(payload)
-	if err != nil{
-		return
-	}
-	requestPayload := bytes.NewReader(jsonPayload)
-	url,err := s.GetBaseURL()
-	if err != nil{
-		return
-	}
-	url += "/mpesa/b2c/v1/paymentrequest"
-	req,err := http.NewRequest(http.MethodPost,url,requestPayload)
-	req.Header.Add("Content-Type","application/json")
-	res,err := s.MakeRequest(req)
-	if err != nil{
-		return
-	}
-	rBody, err := ioutil.ReadAll(res.Body)
-	defer res.Body.Close()
-	if err != nil{
-		return
-	}
-	if res.StatusCode != 200 {
-		err = s.GetAPIError(res.Status,res.StatusCode,rBody)
-		return
-	}
-	b2cRes = &B2CRes{}
-	err = json.Unmarshal(rBody,b2cRes)
+	endpoint := "/mpesa/b2c/v1/paymentrequest"
+	apiRes, err = s.SendAPIRequest(endpoint,payload)
 	return
 }
