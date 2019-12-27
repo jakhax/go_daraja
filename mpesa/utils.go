@@ -11,7 +11,7 @@ func FormatPhoneNumber(phonenumber string, format string) (phone string, err err
 		return
 	}
 	if ok := phonenumbers.IsValidNumber(num); !ok {
-		err = &PhoneNumberValidationError{Message: "Invalid Phone Number"}
+		err = fmt.Errorf("Invalid Phone Number")
 		return
 	}
 	if format == "E164" {

@@ -13,8 +13,8 @@ import (
 	"regexp"
 )
 
-//ExpressApi service interface
-type ExpressApi interface{
+//ExpressAPI service interface
+type ExpressAPI interface{
 	STKPush(express *Express)(stkPushRes *STKPushRes,err error)
 	ParseSTKCallBackRes(stkCallBackRes io.Reader) (parsedStkRes *ParsedSTKCallBackRes,err error)
 	ExpressTransactionStatus(shortCode,password,checkOutRequestID string) (ts *ExpressTransactionStatusRes, err error)
@@ -39,7 +39,7 @@ type Express struct{
 func (m *Express) OK()(err error){
 	//validate shortcode
 	digitCheck := regexp.MustCompile(`^[0-9]+$`)
-	if !digitCheck(m.ShortCode){
+	if !digitCheck.MatchString(m.ShortCode){
 		err = fmt.Errorf("ShortCode must be a valid numeric string")
 		return
 	}
@@ -78,6 +78,9 @@ func (m *Express) OK()(err error){
 	}
 	if m.AccountRef == ""{
 		m.AccountRef = "account"
+	}
+	if m.TransactionDesc == ""{
+		m.TransactionDesc = "empty desc"
 	}
 	return
 	
@@ -119,7 +122,7 @@ func (s *Mpesa) STKPush(express *Express)(stkPushRes *STKPushRes,err error){
 	timestamp := t.Format(layout)
 	//create bs64 password
 	password := base64.StdEncoding.EncodeToString([]byte(express.ShortCode + express.Password + timestamp))
-
+	
 	//payload
 	expressPayload := &ExpressPayload{
 		BusinessShortCode: express.ShortCode,
@@ -150,15 +153,22 @@ func (s *Mpesa) STKPush(express *Express)(stkPushRes *STKPushRes,err error){
 		return
 	}
 	req.Header.Add("Content-Type", "application/json")
+	
 	res, err := s.MakeRequest(req)
+	
 	if err != nil {
+		return
+	}
+	resBody, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+	if err != nil {
+		return
+	}
+	if res.StatusCode != 200 {
+		err = s.GetAPIError(res.Status,res.StatusCode,resBody)
 		return
 	}
 	stkPushRes = &STKPushRes{}
-	resBody, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return
-	}
 	err = json.Unmarshal(resBody, stkPushRes)
 	return
 }
@@ -272,12 +282,12 @@ func (s *Mpesa) ExpressTransactionStatus(shortCode, password,checkOutRequestID s
 	layout := "20060102150405"
 	timestamp := t.Format(layout)
 
-	password = base64.StdEncoding.EncodeToString([]byte(shortCode + password + timeStamp))
+	password = base64.StdEncoding.EncodeToString([]byte(shortCode + password + timestamp))
 
 	transactionStatusReq := &ExpressTransactionStatusReq{
 		CheckoutRequestID: checkOutRequestID,
 		Password:          password,
-		Timestamp:         timeStamp,
+		Timestamp:         timestamp,
 		BusinessShortCode: shortCode,
 	}
 
@@ -303,10 +313,13 @@ func (s *Mpesa) ExpressTransactionStatus(shortCode, password,checkOutRequestID s
 	if err != nil {
 		return
 	}
-	body := res.Body
+	rBody, err := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
-	rBody, err := ioutil.ReadAll(body)
 	if err != nil {
+		return
+	}
+	if res.StatusCode != 200 {
+		err = s.GetAPIError(res.Status,res.StatusCode,rBody)
 		return
 	}
 	ts = &ExpressTransactionStatusRes{}

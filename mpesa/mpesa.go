@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"time"
 )
 
 type C2BApi interface {
@@ -34,7 +33,7 @@ const CustomerBuyGoodsOnline string = "CustomerBuyGoodsOnline"
 
 //environment types
 
-//Sandbox environment
+//SandBox environment
 const SandBox string = "sandbox"
 //Production environment
 const Production string = "production"
@@ -47,33 +46,6 @@ const SalaryPayment string  = "SalaryPayment"
 const BusinessPayment string = "BusinessPayment"
 //PromotionPayment b2c commandID
 const PromotionPayment string = "PromotionPayment"
-
-//Config basic mpesa configurations
-type Config struct{
-	ConsumerKey string
-	ConsumerSecret string
-	Environment string 
-}
-
-//OK validates config
-func (c *Config) OK()(err error){
-	if c.ConsumerKey == ""{
-		err = fmt.Errorf("ConsumerKey not set")
-		return
-	}
-	if c.ConsumerSecret == ""{
-		err = fmt.Errorf("ConsumerSecret not set")
-		return
-	}
-	switch c.Environment{
-		case SandBox,Production::
-			break
-		default:
-			err = fmt.Errorf("Invalid Environment options are: sanbox,production")
-			return
-	}
-	return
-}
 
 //Mpesa service implements express, b2c, cb2, b2b, reverse, balance query & transaction query
 type Mpesa struct{
@@ -142,7 +114,36 @@ func (s *Mpesa) MakeRequest(req *http.Request)(res *http.Response, err error){
 		return
 	}
 	req.Header.Add("Authorization", "Bearer "+authToken.AccessToken)
+	
 	return client.Do(req)
+}
+
+//APIError error
+type APIError struct{
+	RequestID string `json:"requestId"`
+	ErrorCode string `json:"errorCode"`
+	ErrorMessage string `json:"errorMessage"`
+	Status string
+	StatusCode int
+}
+//Error returns error message
+func (e *APIError) Error() string{
+	if e.ErrorMessage != "" {
+		return e.ErrorMessage
+	}
+	if e.Status != ""{
+		return e.Status
+	}
+	return fmt.Sprintf("Api error, status code:%d",e.StatusCode)
+}
+
+//GetAPIError tries to decode api response to APIError
+func (s *Mpesa) GetAPIError(status string, statusCode int, errorBody []byte)(apiError *APIError){
+	apiError = &APIError{}
+	_ = json.Unmarshal(errorBody,apiError)
+	apiError.StatusCode = statusCode
+	apiError.Status = status
+	return
 }
 
 //NewMpesa returns *Mpesa service

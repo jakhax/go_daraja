@@ -11,7 +11,8 @@ import (
 	"strconv"
 )
 
-type B2CApi interface {
+//B2CAPI service intercface
+type B2CAPI interface {
 	B2C(b2c *B2C) (b2cRes *B2CRes, err error)
 }
 
@@ -31,7 +32,8 @@ type B2C struct{
 	Remarks string
 }
 
-func (m *B2C) OK(err error){
+//OK validates B2C
+func (m *B2C) OK() (err error){
 	//shortcode
 	digitMatch := regexp.MustCompile(`^[0-9]+$`)
 	if !digitMatch.MatchString(m.ShortCode){
@@ -54,7 +56,7 @@ func (m *B2C) OK(err error){
 		err= fmt.Errorf("Must provide phone number")
 		return
 	}
-	phoneNumber, err = FormatPhoneNumber(m.PhoneNumber,"E164")
+	phoneNumber, err := FormatPhoneNumber(m.PhoneNumber,"E164")
 	if err != nil{
 		return
 	}
@@ -82,6 +84,9 @@ func (m *B2C) OK(err error){
 	}
 	if m.TimeoutCallBackURL == ""{
 		m.TimeoutCallBackURL = m.ResultCallBackURL
+	}
+	if m.Remarks == ""{
+		m.Remarks = "empty remarks"
 	}
 	return
 }
@@ -133,7 +138,7 @@ func (s *Mpesa) B2C(b2c *B2C)(b2cRes *B2CRes, err error){
 	if err != nil{
 		return
 	}
-	securityCredential = base64.StdEncoding.EncodeToString(cipherText)
+	securityCredential := base64.StdEncoding.EncodeToString(cipherText)
 	payload := &B2CPayload{
 		InitiatorName:b2c.InitiatorUserName,
 		SecurityCredential:securityCredential,
@@ -162,10 +167,13 @@ func (s *Mpesa) B2C(b2c *B2C)(b2cRes *B2CRes, err error){
 		return
 	}
 
-	body := res.Body 
-	rBody, err := ioutil.ReadAll(body)
+	rBody, err := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
 	if err != nil{
+		return
+	}
+	if res.StatusCode != 200 {
+		err = s.GetAPIError(res.Status,res.StatusCode,rBody)
 		return
 	}
 	b2cRes = &B2CRes{}
