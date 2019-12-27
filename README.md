@@ -20,7 +20,6 @@ go get github.com/jakhax/go_daraja
 go get github.com/nyaruka/phonenumbers
 ```
 
-
 ## Usage
 - Will document all API's soon, for now refer to the examples below.
 - This is not a detailed doc of how daraja api works, for that i highly recommend this article [https://peternjeru.co.ke/safdaraja/ui/](https://peternjeru.co.ke/safdaraja/ui/).
@@ -58,5 +57,4 @@ func main(){
 
 
 ## References
-- [https://peternjeru.co.ke/safdaraja/ui/](https://peternjeru.co.ke/safdaraja/ui/), This guy is a hero.
-
+- [https://peternjeru.co.ke/safdaraja/ui/](https://peternjeru.co.ke/safdaraja/ui/).
