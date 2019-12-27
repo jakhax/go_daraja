@@ -9,17 +9,6 @@ import (
 	"bytes"
 )
 
-type C2BApi interface {
-
-}
-
-type B2BApi interface {
-
-}
-
-type TransactionQueryApi interface {
-
-}
 
 //identifier types
 
@@ -79,7 +68,7 @@ func (s *Mpesa) GetBaseURL() (url string, err error) {
 	return
 }
 
-//Authtoken model
+//AuthToken model
 type AuthToken struct {
 	AccessToken string `json:"access_token"`
 	ExpiresIn   string `json:"expires_in"`
@@ -213,3 +202,4 @@ func NewMpesa(config *Config)(s *Mpesa, err error){
 	} 
 	return
 }
+

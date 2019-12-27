@@ -146,3 +146,4 @@ func (s *Mpesa) TransactionStatus(ts *TransactionStatus)(apiRes *APIRes, err err
 	apiRes, err = s.SendAPIRequest(endpoint,payload)
 	return
 }
+
