@@ -1,114 +1,113 @@
 package mpesa
 
 import (
-	"regexp"
 	"fmt"
 	"math"
+	"regexp"
 )
 
 //ReversalAPI service interface
-type ReversalAPI interface{
-	Reverse(r *Reversal)(apiRes *APIRes, err error)
+type ReversalAPI interface {
+	Reverse(r *Reversal) (apiRes *APIRes, err error)
 }
 
 //Reversal model
-type Reversal struct{
-	TransactionID string
+type Reversal struct {
+	TransactionID     string
 	InitiatorUserName string
 	InitiatorPassword string
 	// provider either shortcode or phone number depending on the receiver of transaction
-	ShortCode string
-	PhoneNumber string
+	ShortCode     string
+	PhoneNumber   string
 	receiverParty string
-	Amount float32
+	Amount        float32
 	//optional defaults to msdin for phone number and organization for shortcode
 	RecieverIdentifierType string
-	TimeOutCallBackURL string
-	ResultCallBackURL string
-	Remarks string
+	TimeOutCallBackURL     string
+	ResultCallBackURL      string
+	Remarks                string
 }
 
 //OK validates
-func (m *Reversal) OK()(err error){
-	if m.ShortCode != "" && m.PhoneNumber != ""{
+func (m *Reversal) OK() (err error) {
+	if m.ShortCode != "" && m.PhoneNumber != "" {
 		err = fmt.Errorf("provider either shortcode or phone number, not both, depending on receiver")
 		return
 	}
 
 	//shortcode
-	if m.ShortCode != ""{
+	if m.ShortCode != "" {
 		digitMatch := regexp.MustCompile(`^[0-9]+$`)
-		if !digitMatch.MatchString(m.ShortCode){
+		if !digitMatch.MatchString(m.ShortCode) {
 			err = fmt.Errorf("ShortCode must be a valid numeric string")
 			return
 		}
 		m.receiverParty = m.ShortCode
 	}
 
-	if m.PhoneNumber != ""{
-		phoneNumber, errX := FormatPhoneNumber(m.PhoneNumber,"E164")
-		if errX != nil{
+	if m.PhoneNumber != "" {
+		phoneNumber, errX := FormatPhoneNumber(m.PhoneNumber, "E164")
+		if errX != nil {
 			err = errX
 			return
 		}
 		//slice +
 		m.receiverParty = phoneNumber[1:]
-		if m.RecieverIdentifierType == ""{
+		if m.RecieverIdentifierType == "" {
 			m.RecieverIdentifierType = MSISDNIdentiferType
 		}
 	}
-	//amount 
+	//amount
 	if m.Amount <= float32(0) {
 		err = fmt.Errorf("Must provide amount transacted, amount > 0")
 		return
 	}
 
 	//initiator username
-	if m.InitiatorUserName == ""{
+	if m.InitiatorUserName == "" {
 		err = fmt.Errorf("Must provide initiator username")
 		return
 	}
 	//initiator password
-	if m.InitiatorPassword == ""{
-		err= fmt.Errorf("Must provide initiator password")
+	if m.InitiatorPassword == "" {
+		err = fmt.Errorf("Must provide initiator password")
 		return
 	}
 	//TransactionID
-	if m.TransactionID == ""{
+	if m.TransactionID == "" {
 		err = fmt.Errorf("Must provide transaction id")
 		return
 	}
 
-	if m.ResultCallBackURL == ""{
+	if m.ResultCallBackURL == "" {
 		err = fmt.Errorf("Must provide a result callback url")
 		return
 	}
-	if m.TimeOutCallBackURL == ""{
+	if m.TimeOutCallBackURL == "" {
 		m.TimeOutCallBackURL = m.ResultCallBackURL
 	}
-	if m.Remarks == ""{
+	if m.Remarks == "" {
 		m.Remarks = "empty remarks"
 	}
 	//IdentiferType
-	switch m.RecieverIdentifierType{
-		case MSISDNIdentiferType,TillNumberIdentifierType,OrganizationIdentifierType:
-			break
-		case "":
-			m.RecieverIdentifierType = OrganizationIdentifierType
-			break
-		default:
-			err = fmt.Errorf("Invalid identifier type")
-			return
+	switch m.RecieverIdentifierType {
+	case MSISDNIdentiferType, TillNumberIdentifierType, OrganizationIdentifierType:
+		break
+	case "":
+		m.RecieverIdentifierType = OrganizationIdentifierType
+		break
+	default:
+		err = fmt.Errorf("Invalid identifier type")
+		return
 	}
-	return	
+	return
 }
 
-
-//ReversalPayload api payload 
-type ReversalPayload struct{
+//ReversalPayload api payload
+type ReversalPayload struct {
 	// Initiator	This is the credential/username used to authenticate the transaction request.
 	Initiator string `json:"Initiator"`
-	// SecurityCredential	Base64 encoded string of the M-Pesa short code and password, 
+	// SecurityCredential	Base64 encoded string of the M-Pesa short code and password,
 	//which is encrypted using M-Pesa public key and validates the transaction on M-Pesa Core system.
 	SecurityCredential string `json:"SecurityCredential"`
 	// CommandID	Unique command for each transaction type, possible values are: TransactionReversal.
@@ -119,7 +118,7 @@ type ReversalPayload struct{
 	RecieverIdentifierType string `json:"RecieverIdentifierType"`
 	// Remarks	Comments that are sent along with the transaction.
 	//Amount The amount transacted in that transaction to be reversed, down to the cent.
-	Amount float32
+	Amount  float32
 	Remarks string `json:"Remarks"`
 	// QueueTimeOutURL	The path that stores information of time out transaction.
 	QueueTimeOutURL string `json:"QueueTimeOutURL"`
@@ -132,32 +131,32 @@ type ReversalPayload struct{
 }
 
 //Reverse sends request to reverse a transaction
-func (s *Mpesa) Reverse(r *Reversal)(apiRes *APIRes, err error){
+func (s *Mpesa) Reverse(r *Reversal) (apiRes *APIRes, err error) {
 	err = r.OK()
-	if err != nil{
+	if err != nil {
 		return
 	}
 	//encrypt password
-	securityCredential,err := EncryptPassword(r.InitiatorPassword,s.Config.Environment)
-	if err != nil{
+	securityCredential, err := EncryptPassword(r.InitiatorPassword, s.Config.Environment)
+	if err != nil {
 		return
 	}
-	amount := float32(math.Round(float64(r.Amount)*100)/100)
+	amount := float32(math.Round(float64(r.Amount)*100) / 100)
 
 	payload := &ReversalPayload{
-		Initiator:r.InitiatorUserName,
-		SecurityCredential:securityCredential,
-		ReceiverParty:r.receiverParty,
-		CommandID:TransactionReversal,
-		RecieverIdentifierType:r.RecieverIdentifierType,
-		Remarks:r.Remarks,
-		QueueTimeOutURL:r.TimeOutCallBackURL,
-		ResultURL:r.ResultCallBackURL,
-		TransactionID:r.TransactionID,
-		Amount:amount,
+		Initiator:              r.InitiatorUserName,
+		SecurityCredential:     securityCredential,
+		ReceiverParty:          r.receiverParty,
+		CommandID:              TransactionReversal,
+		RecieverIdentifierType: r.RecieverIdentifierType,
+		Remarks:                r.Remarks,
+		QueueTimeOutURL:        r.TimeOutCallBackURL,
+		ResultURL:              r.ResultCallBackURL,
+		TransactionID:          r.TransactionID,
+		Amount:                 amount,
 	}
 	endpoint := "/mpesa/reversal/v1/request"
-	apiRes, err = s.APIRes(endpoint,payload)
+	apiRes, err = s.APIRes(endpoint, payload)
 	return
 
 }

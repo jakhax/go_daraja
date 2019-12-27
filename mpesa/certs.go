@@ -2,7 +2,7 @@ package mpesa
 
 //SandBoxCert for daraja
 var SandBoxCert []byte = []byte(
-`
+	`
 -----BEGIN CERTIFICATE-----
 MIIGKzCCBROgAwIBAgIQDL7NH8cxSdUpl0ihH0A1wTANBgkqhkiG9w0BAQsFADBN
 MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMScwJQYDVQQDEx5E
@@ -42,7 +42,7 @@ HE05qm6HNyV5eTa6wvcbc4ewguN1UDZvPWetSyfBk10Wbpor4znQ4TJ3Y9uCvsJH
 
 //ProductionCert for daraja
 var ProductionCert []byte = []byte(
-`
+	`
 -----BEGIN CERTIFICATE-----
 MIIGkzCCBXugAwIBAgIKXfBp5gAAAD+hNjANBgkqhkiG9w0BAQsFADBbMRMwEQYK
 CZImiZPyLGQBGRYDbmV0MRkwFwYKCZImiZPyLGQBGRYJc2FmYXJpY29tMSkwJwYD

@@ -8,27 +8,26 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
-	"regexp"
 )
 
 //ExpressAPI service interface
-type ExpressAPI interface{
-	STKPush(express *Express)(stkPushRes *STKPushRes,err error)
-	ParseSTKCallBackRes(stkCallBackRes io.Reader) (parsedStkRes *ParsedSTKCallBackRes,err error)
-	ExpressTransactionStatus(shortCode,password,checkOutRequestID string) (ts *ExpressTransactionStatusRes, err error)
+type ExpressAPI interface {
+	STKPush(express *Express) (stkPushRes *STKPushRes, err error)
+	ParseSTKCallBackRes(stkCallBackRes io.Reader) (parsedStkRes *ParsedSTKCallBackRes, err error)
+	ExpressTransactionStatus(shortCode, password, checkOutRequestID string) (ts *ExpressTransactionStatusRes, err error)
 }
 
-
-//Express model 
-type Express struct{
-	ShortCode string 
-	Password string
+//Express model
+type Express struct {
+	ShortCode       string
+	Password        string
 	TransactionType string
-	PhoneNumber string
-	CallBackURL string 
-	Amount int
+	PhoneNumber     string
+	CallBackURL     string
+	Amount          int
 	//AccountRef optional defaults to account
 	AccountRef string
 	//TransactionDesc optional defaults to ""
@@ -36,38 +35,38 @@ type Express struct{
 }
 
 //OK validates Express model
-func (m *Express) OK()(err error){
+func (m *Express) OK() (err error) {
 	//validate shortcode
 	digitCheck := regexp.MustCompile(`^[0-9]+$`)
-	if !digitCheck.MatchString(m.ShortCode){
+	if !digitCheck.MatchString(m.ShortCode) {
 		err = fmt.Errorf("ShortCode must be a valid numeric string")
 		return
 	}
 	//password
-	if m.Password == ""{
+	if m.Password == "" {
 		err = fmt.Errorf("Must provide lnm password")
 		return
 	}
 	//transaction type
-	switch m.TransactionType{
-		case "":
-			//default to paybill
-			m.TransactionType = CustomerPayBillOnline
-			break
-		case CustomerPayBillOnline:
-			break
-		default:
-			err = fmt.Errorf("Invalid transaction type")
-			return
+	switch m.TransactionType {
+	case "":
+		//default to paybill
+		m.TransactionType = CustomerPayBillOnline
+		break
+	case CustomerPayBillOnline:
+		break
+	default:
+		err = fmt.Errorf("Invalid transaction type")
+		return
 	}
-	phoneNumber, err := FormatPhoneNumber(m.PhoneNumber,"E164")
-	if err != nil{
+	phoneNumber, err := FormatPhoneNumber(m.PhoneNumber, "E164")
+	if err != nil {
 		return
 	}
 	// skip +
 	m.PhoneNumber = phoneNumber[1:]
 	//callbackURl
-	if m.CallBackURL == ""{
+	if m.CallBackURL == "" {
 		err = fmt.Errorf("Must Provide callBackURL")
 		return
 	}
@@ -76,14 +75,14 @@ func (m *Express) OK()(err error){
 		err = fmt.Errorf("Amount must be > 0")
 		return
 	}
-	if m.AccountRef == ""{
+	if m.AccountRef == "" {
 		m.AccountRef = "account"
 	}
-	if m.TransactionDesc == ""{
+	if m.TransactionDesc == "" {
 		m.TransactionDesc = "empty desc"
 	}
 	return
-	
+
 }
 
 // ExpressPayload is the payload for Daraja LNM endpoint
@@ -111,9 +110,9 @@ type STKPushRes struct {
 }
 
 //STKPush for express api / Lipa Na Mpesa
-func (s *Mpesa) STKPush(express *Express)(stkPushRes *STKPushRes,err error){
+func (s *Mpesa) STKPush(express *Express) (stkPushRes *STKPushRes, err error) {
 	err = express.OK()
-	if err != nil{
+	if err != nil {
 		return
 	}
 	//timestamp
@@ -122,7 +121,7 @@ func (s *Mpesa) STKPush(express *Express)(stkPushRes *STKPushRes,err error){
 	timestamp := t.Format(layout)
 	//create bs64 password
 	password := base64.StdEncoding.EncodeToString([]byte(express.ShortCode + express.Password + timestamp))
-	
+
 	//payload
 	expressPayload := &ExpressPayload{
 		BusinessShortCode: express.ShortCode,
@@ -153,9 +152,9 @@ func (s *Mpesa) STKPush(express *Express)(stkPushRes *STKPushRes,err error){
 		return
 	}
 	req.Header.Add("Content-Type", "application/json")
-	
+
 	res, err := s.MakeRequest(req)
-	
+
 	if err != nil {
 		return
 	}
@@ -165,7 +164,7 @@ func (s *Mpesa) STKPush(express *Express)(stkPushRes *STKPushRes,err error){
 		return
 	}
 	if res.StatusCode != 200 {
-		err = s.GetAPIError(res.Status,res.StatusCode,resBody)
+		err = s.GetAPIError(res.Status, res.StatusCode, resBody)
 		return
 	}
 	stkPushRes = &STKPushRes{}
@@ -211,7 +210,7 @@ type ParsedSTKCallBackRes struct {
 }
 
 // ParseSTKCallBackRes parses the response from the stk push callback payload
-func (s *Mpesa) ParseSTKCallBackRes(stkCallBackRes io.Reader) (parsedStkRes *ParsedSTKCallBackRes,err error) {
+func (s *Mpesa) ParseSTKCallBackRes(stkCallBackRes io.Reader) (parsedStkRes *ParsedSTKCallBackRes, err error) {
 	data, err := ioutil.ReadAll(stkCallBackRes)
 	if err != nil {
 		return
@@ -274,9 +273,8 @@ type ExpressTransactionStatusRes struct {
 	CustomerMessage     string
 }
 
-
 // ExpressTransactionStatus checks the status of Express Payment
-func (s *Mpesa) ExpressTransactionStatus(shortCode, password,checkOutRequestID string) (ts *ExpressTransactionStatusRes, err error) {
+func (s *Mpesa) ExpressTransactionStatus(shortCode, password, checkOutRequestID string) (ts *ExpressTransactionStatusRes, err error) {
 	// timestamp
 	t := time.Now()
 	layout := "20060102150405"
@@ -319,7 +317,7 @@ func (s *Mpesa) ExpressTransactionStatus(shortCode, password,checkOutRequestID s
 		return
 	}
 	if res.StatusCode != 200 {
-		err = s.GetAPIError(res.Status,res.StatusCode,rBody)
+		err = s.GetAPIError(res.Status, res.StatusCode, rBody)
 		return
 	}
 	ts = &ExpressTransactionStatusRes{}

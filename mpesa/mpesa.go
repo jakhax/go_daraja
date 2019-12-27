@@ -1,21 +1,22 @@
-package mpesa;
+package mpesa
 
 import (
-	"fmt"
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
-	"bytes"
 )
-
 
 //identifier types
 
 //MSISDNIdentiferType identifier type
 const MSISDNIdentiferType string = "1"
+
 //TillNumberIdentifierType identifier type
 const TillNumberIdentifierType string = "2"
+
 //OrganizationIdentifierType identifier type
 const OrganizationIdentifierType string = "4"
 
@@ -23,46 +24,53 @@ const OrganizationIdentifierType string = "4"
 
 //CustomerPayBillOnline transaction type
 const CustomerPayBillOnline string = "CustomerPayBillOnline"
-	//CustomerBuyGoodsOnline transaction type
+
+//CustomerBuyGoodsOnline transaction type
 const CustomerBuyGoodsOnline string = "CustomerBuyGoodsOnline"
 
 //environment types
 
 //SandBox environment
 const SandBox string = "sandbox"
+
 //Production environment
 const Production string = "production"
 
-//commandIDs 
+//commandIDs
 
 //SalaryPayment b2c commandID
-const SalaryPayment string  = "SalaryPayment"
+const SalaryPayment string = "SalaryPayment"
+
 //BusinessPayment b2c commandID
 const BusinessPayment string = "BusinessPayment"
+
 //PromotionPayment b2c commandID
 const PromotionPayment string = "PromotionPayment"
+
 //AccountBalance commandID
 const AccountBalance string = "AccountBalance"
+
 //TransactionStatusQuery commandID
 const TransactionStatusQuery string = "TransactionStatusQuery"
+
 //TransactionReversal commandID
 const TransactionReversal string = "TransactionReversal"
 
 //Mpesa service implements express, b2c, cb2, b2b, reverse, balance query & transaction query
-type Mpesa struct{
+type Mpesa struct {
 	Config *Config
 }
 
 //GetBaseURL returns base api url base on environment
 func (s *Mpesa) GetBaseURL() (url string, err error) {
 	env := s.Config.Environment
-	switch env{
-		case SandBox:
-			url = "https://sandbox.safaricom.co.ke"
-			return
-		case Production:
-			url = "https://api.safaricom.co.ke"
-			return
+	switch env {
+	case SandBox:
+		url = "https://sandbox.safaricom.co.ke"
+		return
+	case Production:
+		url = "https://api.safaricom.co.ke"
+		return
 	}
 	err = fmt.Errorf("Invalid environment")
 	return
@@ -75,7 +83,7 @@ type AuthToken struct {
 }
 
 //GetAuthToken returns *AuthToken
-func (s *Mpesa) GetAuthToken()(authToken *AuthToken, err error){
+func (s *Mpesa) GetAuthToken() (authToken *AuthToken, err error) {
 	consumerKey := s.Config.ConsumerKey
 	consumerSecret := s.Config.ConsumerSecret
 	password := consumerKey + ":" + consumerSecret
@@ -108,40 +116,41 @@ func (s *Mpesa) GetAuthToken()(authToken *AuthToken, err error){
 }
 
 //MakeRequest makes an authenticated http request to daraja api
-func (s *Mpesa) MakeRequest(req *http.Request)(res *http.Response, err error){
+func (s *Mpesa) MakeRequest(req *http.Request) (res *http.Response, err error) {
 	client := http.Client{}
-	authToken,err := s.GetAuthToken()
-	if err != nil{
+	authToken, err := s.GetAuthToken()
+	if err != nil {
 		return
 	}
 	req.Header.Add("Authorization", "Bearer "+authToken.AccessToken)
-	
+
 	return client.Do(req)
 }
 
 //APIError error
-type APIError struct{
-	RequestID string `json:"requestId"`
-	ErrorCode string `json:"errorCode"`
+type APIError struct {
+	RequestID    string `json:"requestId"`
+	ErrorCode    string `json:"errorCode"`
 	ErrorMessage string `json:"errorMessage"`
-	Status string
-	StatusCode int
+	Status       string
+	StatusCode   int
 }
+
 //Error returns error message
-func (e *APIError) Error() string{
+func (e *APIError) Error() string {
 	if e.ErrorMessage != "" {
 		return e.ErrorMessage
 	}
-	if e.Status != ""{
+	if e.Status != "" {
 		return e.Status
 	}
-	return fmt.Sprintf("Api error, status code:%d",e.StatusCode)
+	return fmt.Sprintf("Api error, status code:%d", e.StatusCode)
 }
 
 //GetAPIError tries to decode api response to APIError
-func (s *Mpesa) GetAPIError(status string, statusCode int, errorBody []byte)(apiError *APIError){
+func (s *Mpesa) GetAPIError(status string, statusCode int, errorBody []byte) (apiError *APIError) {
 	apiError = &APIError{}
-	_ = json.Unmarshal(errorBody,apiError)
+	_ = json.Unmarshal(errorBody, apiError)
 	apiError.StatusCode = statusCode
 	apiError.Status = status
 	return
@@ -156,57 +165,56 @@ type APIRes struct {
 }
 
 //APIRequest sends api post request
-func (s *Mpesa) APIRequest(endpoint string,payload interface{})(resp []byte, err error){
-	jsonPayload,err := json.Marshal(payload)
-	if err != nil{
+func (s *Mpesa) APIRequest(endpoint string, payload interface{}) (resp []byte, err error) {
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
 		return
 	}
-	url ,err :=  s.GetBaseURL()
-	if err != nil{
+	url, err := s.GetBaseURL()
+	if err != nil {
 		return
 	}
 	url += endpoint
-	req , err := http.NewRequest(http.MethodPost,url,bytes.NewReader(jsonPayload))
-	if err != nil{
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonPayload))
+	if err != nil {
 		return
 	}
-	req.Header.Add("Content-Type","application/json")
+	req.Header.Add("Content-Type", "application/json")
 	res, err := s.MakeRequest(req)
 	if err != nil {
 		return
 	}
 	resp, err = ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
-	if err != nil{
+	if err != nil {
 		return
 	}
 	if res.StatusCode != 200 {
-		err = s.GetAPIError(res.Status,res.StatusCode,resp)
+		err = s.GetAPIError(res.Status, res.StatusCode, resp)
 	}
 	return
 }
 
 //APIRes send api request
-func (s *Mpesa) APIRes(endpoint string,payload interface{}) (apiRes *APIRes, err error){
-	rBody,err := s.APIRequest(endpoint,payload)
-	if err != nil{
+func (s *Mpesa) APIRes(endpoint string, payload interface{}) (apiRes *APIRes, err error) {
+	rBody, err := s.APIRequest(endpoint, payload)
+	if err != nil {
 		return
 	}
 	apiRes = &APIRes{}
-	err = json.Unmarshal(rBody,apiRes)
+	err = json.Unmarshal(rBody, apiRes)
 	return
 
 }
 
 //NewMpesa returns *Mpesa service
-func NewMpesa(config *Config)(s *Mpesa, err error){
+func NewMpesa(config *Config) (s *Mpesa, err error) {
 	err = config.OK()
-	if err != nil{
+	if err != nil {
 		return
 	}
 	s = &Mpesa{
-		Config:config,
-	} 
+		Config: config,
+	}
 	return
 }
-

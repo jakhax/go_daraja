@@ -11,15 +11,15 @@ type B2CAPI interface {
 	B2C(b2c *B2C) (apiRes *APIRes, err error)
 }
 
-//B2C model 
-type B2C struct{
+//B2C model
+type B2C struct {
 	InitiatorUserName string
 	InitiatorPassword string
-	ShortCode string
-	PhoneNumber string
-	Amount int 
+	ShortCode         string
+	PhoneNumber       string
+	Amount            int
 	//optional defaults to BusinessPayment
-	CommandID string
+	CommandID         string
 	ResultCallBackURL string
 	//optional defaults to ResultURL
 	TimeOutCallBackURL string
@@ -28,31 +28,31 @@ type B2C struct{
 }
 
 //OK validates B2C
-func (m *B2C) OK() (err error){
+func (m *B2C) OK() (err error) {
 	//shortcode
 	digitMatch := regexp.MustCompile(`^[0-9]+$`)
-	if !digitMatch.MatchString(m.ShortCode){
+	if !digitMatch.MatchString(m.ShortCode) {
 		err = fmt.Errorf("ShortCode must be a valid numeric string")
 		return
 	}
 	//initiator username
-	if m.InitiatorUserName == ""{
+	if m.InitiatorUserName == "" {
 		err = fmt.Errorf("Must provide initiator username")
 		return
 	}
 	//initiator password
-	if m.InitiatorPassword == ""{
-		err= fmt.Errorf("Must provide initiator password")
+	if m.InitiatorPassword == "" {
+		err = fmt.Errorf("Must provide initiator password")
 		return
 	}
 
 	//phonenumber
-	if m.PhoneNumber == ""{
-		err= fmt.Errorf("Must provide phone number")
+	if m.PhoneNumber == "" {
+		err = fmt.Errorf("Must provide phone number")
 		return
 	}
-	phoneNumber, err := FormatPhoneNumber(m.PhoneNumber,"E164")
-	if err != nil{
+	phoneNumber, err := FormatPhoneNumber(m.PhoneNumber, "E164")
+	if err != nil {
 		return
 	}
 	//slice +
@@ -60,32 +60,31 @@ func (m *B2C) OK() (err error){
 
 	//commandId
 	switch m.CommandID {
-		case SalaryPayment, BusinessPayment, PromotionPayment:
-			break
-		case "":
-			m.CommandID = BusinessPayment
-			break
-		default:
-			err = fmt.Errorf("Invalid CommandID")
-			return
+	case SalaryPayment, BusinessPayment, PromotionPayment:
+		break
+	case "":
+		m.CommandID = BusinessPayment
+		break
+	default:
+		err = fmt.Errorf("Invalid CommandID")
+		return
 	}
-	if m.Amount <= 0{
+	if m.Amount <= 0 {
 		err = fmt.Errorf("Amount must be > 0")
 		return
 	}
-	if m.ResultCallBackURL == ""{
+	if m.ResultCallBackURL == "" {
 		err = fmt.Errorf("Must provide a result callback url")
 		return
 	}
-	if m.TimeOutCallBackURL == ""{
+	if m.TimeOutCallBackURL == "" {
 		m.TimeOutCallBackURL = m.ResultCallBackURL
 	}
-	if m.Remarks == ""{
+	if m.Remarks == "" {
 		m.Remarks = "empty remarks"
 	}
 	return
 }
-
 
 //B2CPayload api payload
 type B2CPayload struct {
@@ -114,30 +113,29 @@ type B2CPayload struct {
 	Occassion string `json:"Occassion"`
 }
 
-
 //B2C sends a b2c request to daraja
-func (s *Mpesa) B2C(b2c *B2C)(apiRes *APIRes, err error){
+func (s *Mpesa) B2C(b2c *B2C) (apiRes *APIRes, err error) {
 	err = b2c.OK()
-	if err != nil{
+	if err != nil {
 		return
 	}
 	//encrypt password
-	securityCredential,err := EncryptPassword(b2c.InitiatorPassword,s.Config.Environment)
-	if err != nil{
+	securityCredential, err := EncryptPassword(b2c.InitiatorPassword, s.Config.Environment)
+	if err != nil {
 		return
 	}
 	payload := &B2CPayload{
-		InitiatorName:b2c.InitiatorUserName,
-		SecurityCredential:securityCredential,
-		CommandID:b2c.CommandID,
-		Amount:strconv.Itoa(b2c.Amount),
-		PartyA:b2c.ShortCode,
-		PartyB:b2c.PhoneNumber,
-		Remarks:b2c.Remarks,
-		QueueTimeOutURL:b2c.TimeOutCallBackURL,
-		ResultURL:b2c.ResultCallBackURL,
+		InitiatorName:      b2c.InitiatorUserName,
+		SecurityCredential: securityCredential,
+		CommandID:          b2c.CommandID,
+		Amount:             strconv.Itoa(b2c.Amount),
+		PartyA:             b2c.ShortCode,
+		PartyB:             b2c.PhoneNumber,
+		Remarks:            b2c.Remarks,
+		QueueTimeOutURL:    b2c.TimeOutCallBackURL,
+		ResultURL:          b2c.ResultCallBackURL,
 	}
 	endpoint := "/mpesa/b2c/v1/paymentrequest"
-	apiRes, err = s.APIRes(endpoint,payload)
+	apiRes, err = s.APIRes(endpoint, payload)
 	return
 }
