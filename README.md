@@ -28,7 +28,7 @@ package main;
 import(
 	"fmt"
 	"log"
-	"github.com/jakhax/go_daraja"
+	"github.com/jakhax/go_daraja/mpesa"
 )
 
 //MpesaConfig config
