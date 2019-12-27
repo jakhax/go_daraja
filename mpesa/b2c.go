@@ -3,7 +3,6 @@ package mpesa
 import (
 	"fmt"
 	"regexp"
-	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"bytes"
@@ -19,7 +18,7 @@ type B2CAPI interface {
 //B2C model 
 type B2C struct{
 	InitiatorUserName string
-	Password string
+	InitiatorPassword string
 	ShortCode string
 	PhoneNumber string
 	Amount int 
@@ -27,7 +26,7 @@ type B2C struct{
 	CommandID string
 	ResultCallBackURL string
 	//optional defaults to ResultURL
-	TimeoutCallBackURL string
+	TimeOutCallBackURL string
 	//optional defaults to ""
 	Remarks string
 }
@@ -46,7 +45,7 @@ func (m *B2C) OK() (err error){
 		return
 	}
 	//initiator password
-	if m.Password == ""{
+	if m.InitiatorPassword == ""{
 		err= fmt.Errorf("Must provide initiator password")
 		return
 	}
@@ -82,8 +81,8 @@ func (m *B2C) OK() (err error){
 		err = fmt.Errorf("Must provide a result callback url")
 		return
 	}
-	if m.TimeoutCallBackURL == ""{
-		m.TimeoutCallBackURL = m.ResultCallBackURL
+	if m.TimeOutCallBackURL == ""{
+		m.TimeOutCallBackURL = m.ResultCallBackURL
 	}
 	if m.Remarks == ""{
 		m.Remarks = "empty remarks"
@@ -119,6 +118,7 @@ type B2CPayload struct {
 	Occassion string `json:"Occassion"`
 }
 
+
 //B2CRes response payload
 type B2CRes struct {
 	ConversationID           string `json:"ConversationID"`
@@ -134,11 +134,10 @@ func (s *Mpesa) B2C(b2c *B2C)(b2cRes *B2CRes, err error){
 		return
 	}
 	//encrypt password
-	cipherText,err := EncryptPassword(b2c.Password,s.Config.Environment)
+	securityCredential,err := EncryptPassword(b2c.InitiatorPassword,s.Config.Environment)
 	if err != nil{
 		return
 	}
-	securityCredential := base64.StdEncoding.EncodeToString(cipherText)
 	payload := &B2CPayload{
 		InitiatorName:b2c.InitiatorUserName,
 		SecurityCredential:securityCredential,
@@ -147,7 +146,7 @@ func (s *Mpesa) B2C(b2c *B2C)(b2cRes *B2CRes, err error){
 		PartyA:b2c.ShortCode,
 		PartyB:b2c.PhoneNumber,
 		Remarks:b2c.Remarks,
-		QueueTimeOutURL:b2c.TimeoutCallBackURL,
+		QueueTimeOutURL:b2c.TimeOutCallBackURL,
 		ResultURL:b2c.ResultCallBackURL,
 	}
 	jsonPayload,err:= json.Marshal(payload)
@@ -166,7 +165,6 @@ func (s *Mpesa) B2C(b2c *B2C)(b2cRes *B2CRes, err error){
 	if err != nil{
 		return
 	}
-
 	rBody, err := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
 	if err != nil{

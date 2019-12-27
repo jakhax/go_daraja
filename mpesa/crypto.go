@@ -4,13 +4,14 @@ import (
     "crypto/rand"
     "crypto/rsa"
     "crypto/x509"
-    "encoding/pem"
+	"encoding/pem"
+	"encoding/base64"
 	"fmt"
 )
 
 //EncryptPassword encrypts password using daraja cert
 // uses rsa PKCS1v15 as described in the daraja documentation
-func EncryptPassword(password, environment string)(cipherText []byte,err error){
+func EncryptPassword(password, environment string)(cipherText string,err error){
 	var certB []byte
 	switch environment{
 		case SandBox:
@@ -30,6 +31,11 @@ func EncryptPassword(password, environment string)(cipherText []byte,err error){
 		err = fmt.Errorf("Cannot retrieve public key from cert")
 		return
 	}
-	cipherText, err = rsa.EncryptPKCS1v15(rand.Reader,pubKey,[]byte(password))
+	cipherB, err := rsa.EncryptPKCS1v15(rand.Reader,pubKey,[]byte(password))
+	if err != nil{
+		return
+	}
+
+	cipherText = base64.StdEncoding.EncodeToString(cipherB)
 	return
 }

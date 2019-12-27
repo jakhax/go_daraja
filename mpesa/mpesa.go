@@ -20,9 +20,14 @@ type TransactionQueryApi interface {
 
 }
 
-type BalanceQueryApi interface{
+//identifier types
 
-}
+//MSISDNIdentiferType identifier type
+const MSISDNIdentiferType string = "1"
+//TillNumberIdentifierType identifier type
+const TillNumberIdentifierType string = "2"
+//OrganizationIdentifierType identifier type
+const OrganizationIdentifierType string = "4"
 
 //transaction types
 
@@ -46,6 +51,8 @@ const SalaryPayment string  = "SalaryPayment"
 const BusinessPayment string = "BusinessPayment"
 //PromotionPayment b2c commandID
 const PromotionPayment string = "PromotionPayment"
+//AccountBalance commandID
+const AccountBalance string = "AccountBalance"
 
 //Mpesa service implements express, b2c, cb2, b2b, reverse, balance query & transaction query
 type Mpesa struct{
@@ -143,6 +150,30 @@ func (s *Mpesa) GetAPIError(status string, statusCode int, errorBody []byte)(api
 	_ = json.Unmarshal(errorBody,apiError)
 	apiError.StatusCode = statusCode
 	apiError.Status = status
+	return
+}
+
+//APIRes response payload
+type APIRes struct {
+	ConversationID           string `json:"ConversationID"`
+	OriginatorConversationID string `json:"OriginatorConversationID"`
+	ResponseCode             string `json:"ResponseCode"`
+	ResponseDescription      string `json:"ResponseDescription"`
+}
+
+//GetAPIResponse returns api response
+func (s *Mpesa) GetAPIResponse(res *http.Response)(apiRes *APIRes, err error){
+	rBody, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+	if err != nil{
+		return
+	}
+	if res.StatusCode != 200 {
+		err = s.GetAPIError(res.Status,res.StatusCode,rBody)
+		return
+	}
+	apiRes = &APIRes{}
+	err = json.Unmarshal(rBody,apiRes)
 	return
 }
 
