@@ -138,6 +138,6 @@ func (s *Mpesa) B2C(b2c *B2C)(apiRes *APIRes, err error){
 		ResultURL:b2c.ResultCallBackURL,
 	}
 	endpoint := "/mpesa/b2c/v1/paymentrequest"
-	apiRes, err = s.SendAPIRequest(endpoint,payload)
+	apiRes, err = s.APIRes(endpoint,payload)
 	return
 }

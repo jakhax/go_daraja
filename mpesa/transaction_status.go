@@ -143,7 +143,7 @@ func (s *Mpesa) TransactionStatus(ts *TransactionStatus)(apiRes *APIRes, err err
 		TransactionID:ts.TransactionID,
 	}
 	endpoint := "/mpesa/transactionstatus/v1/query"
-	apiRes, err = s.SendAPIRequest(endpoint,payload)
+	apiRes, err = s.APIRes(endpoint,payload)
 	return
 }
 

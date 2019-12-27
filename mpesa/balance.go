@@ -114,6 +114,6 @@ func (s *Mpesa) BalanceQuery(balanceQuery *BalanceQuery)(apiRes *APIRes,err erro
 		ResultURL:balanceQuery.ResultCallBackURL,
 	} 
 	endpoint := "/mpesa/accountbalance/v1/query"
-	apiRes, err = s.SendAPIRequest(endpoint,payload)
+	apiRes, err = s.APIRes(endpoint,payload)
 	return
 }

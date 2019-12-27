@@ -157,7 +157,7 @@ func (s *Mpesa) Reverse(r *Reversal)(apiRes *APIRes, err error){
 		Amount:amount,
 	}
 	endpoint := "/mpesa/reversal/v1/request"
-	apiRes, err = s.SendAPIRequest(endpoint,payload)
+	apiRes, err = s.APIRes(endpoint,payload)
 	return
 
 }

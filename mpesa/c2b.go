@@ -4,15 +4,81 @@ import (
 	"fmt"
 	"regexp"
 	"encoding/json"
-	"io/ioutil"
-	"net/http"
-	"bytes"
 )
 
 //C2BAPI service  interface
 type C2BAPI interface{
 
 }
+
+
+// C2BRes response
+// they  mis-spelled OriginatorCoversationID hence we cannot use apiRes
+type C2BRes struct{
+	APIRes
+	OriginatorCoversationID string `json:"OriginatorCoversationID"`
+}
+
+
+//C2BSimulate c2b simulate payment model
+type C2BSimulate struct{
+	ShortCode string `json:"ShortCode"`
+	//optional if not provided will default to CustomerPayBillOnline
+	CommandID string `json:"CommandID"`
+	Amount float32 `json:"Amount"`
+	Msisdn string `json:"Msisdn"`
+	BillRefNumber string `json:"BillRefNumber"`
+}
+
+//OK validates
+func (m *C2BSimulate) OK()(err error){
+	//response types
+	switch m.CommandID{
+	case CustomerPayBillOnline,CustomerBuyGoodsOnline:
+		break
+	case "":
+		m.CommandID = CustomerPayBillOnline
+		break
+	default:
+		err = fmt.Errorf("Invalid response type")
+		return
+	}
+	if m.Msisdn == ""{
+		err = fmt.Errorf("Must provide Msisdn")
+		return
+	}
+	phoneNumber, err := FormatPhoneNumber(m.Msisdn,"E164")
+	if err != nil{
+		return
+	}
+	//slice +
+	m.Msisdn = phoneNumber[1:]
+
+	if m.BillRefNumber == ""{
+		m.BillRefNumber = "account"
+	}
+
+	//shortcode
+	digitMatch := regexp.MustCompile(`^[0-9]+$`)
+	if !digitMatch.MatchString(m.ShortCode){
+		err = fmt.Errorf("ShortCode must be a valid numeric string")
+		return
+	}
+	return
+}
+
+//C2BSimulate simulate c2b payment
+func (s *Mpesa) C2BSimulate(c2bSimulate *C2BSimulate)(c2bRes *C2BRes , err error){
+	err = c2bSimulate.OK()
+	if err != nil{
+		return
+	}
+	endpoint := "/mpesa/c2b/v1/simulate"
+	c2bRes, err = s.C2BRes(endpoint,c2bSimulate)
+	return
+
+}
+
 
 //RegisterURLs register validation & confirmation url
 type RegisterURLs struct{
@@ -53,51 +119,27 @@ func (m *RegisterURLs) OK()(err error){
 }
 
 
-
-// RegisterURLRes response
-// the mis spelled OriginatorCoversationID hence we cannot use apiRes
-type RegisterURLRes struct{
-	APIRes
-	OriginatorCoversationID string `json:"OriginatorCoversationID"`
-}
-
-
 //RegisterURLs register validation and confirmation urls
-func (s *Mpesa) RegisterURLs(r *RegisterURLs)(res *RegisterURLRes, err error){
+func (s *Mpesa) RegisterURLs(r *RegisterURLs)(c2bRes *C2BRes, err error){
 	err = r.OK()
 	if err != nil{
 		return
 	}
-	payload,err := json.Marshal(r)
-	if err != nil{
-		return
-	}
-	url, err :=  s.GetBaseURL()
-	if err != nil{
-		return
-	}
-	url += "/mpesa/c2b/v1/registerurl"
-	req, err :=  http.NewRequest(http.MethodPost,url,bytes.NewReader(payload))
-	if err != nil{
-		return
-	}
-	req.Header.Add("Content-Type","application/json")
-	resp,err := s.MakeRequest(req)
-	if err != nil{
-		return
-	}
-	rb,err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil{
-		return
-	}
-	fmt.Println(string(rb))
-	if resp.StatusCode != 200 {
-		err = s.GetAPIError(resp.Status,resp.StatusCode,rb)
-		return
-	}
-	res = &RegisterURLRes{}
-	err = json.Unmarshal(rb,res)
-	
+	endpoint := "/mpesa/c2b/v1/registerurl"
+	c2bRes, err = s.C2BRes(endpoint,r)
 	return
+}
+
+
+//C2BRes send api request
+// this only exists because they mis-spelled "OriginatorCoversationID" hence we cannot use ApiRes
+func (s *Mpesa) C2BRes(endpoint string,payload interface{}) (c2bRes *C2BRes, err error){
+	rBody,err :=  s.APIRequest(endpoint,payload)
+	if err != nil{
+		return
+	}
+	c2bRes = &C2BRes{}
+	err = json.Unmarshal(rBody,c2bRes)
+	return
+
 }

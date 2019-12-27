@@ -155,9 +155,8 @@ type APIRes struct {
 	ResponseDescription      string `json:"ResponseDescription"`
 }
 
-
-//SendAPIRequest send api request
-func (s *Mpesa) SendAPIRequest(endpoint string,payload interface{}) (apiRes *APIRes, err error){
+//APIRequest sends api post request
+func (s *Mpesa) APIRequest(endpoint string,payload interface{})(resp []byte, err error){
 	jsonPayload,err := json.Marshal(payload)
 	if err != nil{
 		return
@@ -176,13 +175,21 @@ func (s *Mpesa) SendAPIRequest(endpoint string,payload interface{}) (apiRes *API
 	if err != nil {
 		return
 	}
-	rBody, err := ioutil.ReadAll(res.Body)
+	resp, err = ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
 	if err != nil{
 		return
 	}
 	if res.StatusCode != 200 {
-		err = s.GetAPIError(res.Status,res.StatusCode,rBody)
+		err = s.GetAPIError(res.Status,res.StatusCode,resp)
+	}
+	return
+}
+
+//APIRes send api request
+func (s *Mpesa) APIRes(endpoint string,payload interface{}) (apiRes *APIRes, err error){
+	rBody,err := s.APIRequest(endpoint,payload)
+	if err != nil{
 		return
 	}
 	apiRes = &APIRes{}
