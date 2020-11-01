@@ -25,6 +25,7 @@ type B2C struct {
 	TimeOutCallBackURL string
 	//optional defaults to ""
 	Remarks string
+	EncryptPassword bool
 }
 
 //OK validates B2C
@@ -120,10 +121,16 @@ func (s *Mpesa) B2C(b2c *B2C) (apiRes *APIRes, err error) {
 		return
 	}
 	//encrypt password
-	securityCredential, err := EncryptPassword(b2c.InitiatorPassword, s.Config.Environment)
-	if err != nil {
-		return
+	var securityCredential string
+	if(b2c.EncryptPassword){
+		securityCredential, err = EncryptPassword(b2c.InitiatorPassword, s.Config.Environment)
+		if err != nil {
+			return
+		}
+	}else{
+		securityCredential = b2c.InitiatorPassword
 	}
+
 	payload := &B2CPayload{
 		InitiatorName:      b2c.InitiatorUserName,
 		SecurityCredential: securityCredential,

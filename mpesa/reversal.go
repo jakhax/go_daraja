@@ -26,6 +26,7 @@ type Reversal struct {
 	TimeOutCallBackURL     string
 	ResultCallBackURL      string
 	Remarks                string
+	EncryptPassword bool
 }
 
 //OK validates
@@ -137,9 +138,14 @@ func (s *Mpesa) Reverse(r *Reversal) (apiRes *APIRes, err error) {
 		return
 	}
 	//encrypt password
-	securityCredential, err := EncryptPassword(r.InitiatorPassword, s.Config.Environment)
-	if err != nil {
-		return
+	var securityCredential string
+	if(r.EncryptPassword){
+		securityCredential, err = EncryptPassword(r.InitiatorPassword, s.Config.Environment)
+		if err != nil {
+			return
+		}
+	}else{
+		securityCredential = r.InitiatorPassword
 	}
 	amount := float32(math.Round(float64(r.Amount)*100) / 100)
 

@@ -165,6 +165,7 @@ func b2CExample()(err error){
 		return
 	}
 	b2c := &mpesa.B2C{
+		EncryptPassword: true,
 		ShortCode:"123456",
 		InitiatorUserName:"testapi115",
 		InitiatorPassword:"Safaricom007@",
@@ -222,6 +223,7 @@ func transactionStatusExample()(err error){
 		return
 	}
 	transactionStatus := &mpesa.TransactionStatus{
+		EncryptPassword: true,
 		PhoneNumber:"254712345678",
 		InitiatorUserName:"testapi115",
 		InitiatorPassword:"Safaricom007@",
